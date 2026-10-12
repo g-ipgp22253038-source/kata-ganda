@@ -3,145 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Litar Kata Ganda - Prototaip</title>
+    <title>Diorama Sensori: Padanan Ganda</title>
     <style>
-        body { margin: 0; background-color: #111; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        #game-container { position: relative; width: 400px; height: 600px; background-color: #222; border: 4px solid #444; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,255,0,0.2); }
-        .road-line { position: absolute; width: 4px; height: 40px; background-color: white; opacity: 0.5; left: 33%; }
-        .road-line-2 { left: 66%; }
-        #car { position: absolute; width: 40px; height: 70px; background-color: #00a8ff; bottom: 20px; left: 180px; border-radius: 5px; transition: left 0.1s; box-shadow: 0 0 10px #00a8ff; }
-        #hud { position: absolute; top: 0; left: 0; width: 100%; text-align: center; background: rgba(0,0,0,0.7); padding: 10px 0; z-index: 10; }
-        #question { font-size: 24px; font-weight: bold; color: #e84118; text-shadow: 0 0 5px #e84118; margin: 0; }
-        #status { font-size: 14px; color: #4cd137; margin-top: 5px; height: 20px; }
-        .gate { position: absolute; top: -50px; width: 133px; height: 30px; background-color: rgba(255,255,255,0.1); border-bottom: 3px solid #fbc531; text-align: center; line-height: 30px; font-weight: bold; color: #fbc531; font-size: 14px; text-shadow: 0 0 5px #fbc531; }
-        #score-board { margin-bottom: 10px; font-size: 18px; }
-    </style>
-</head>
-<body>
+        /* Palet warna pastel untuk murid inklusif */
+        body { 
+            background-color: #f0f8ff; /* Biru Alice yang menenangkan */
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif; /* Font mesra kanak-kanak/disleksia */
+            display: flex; flex-direction: column; align-items: center; 
+            margin: 0; padding: 20px; color: #2d3436;
+        }
+        h1 { color: #6c5ce7; text-align: center; font-size: 28px; }
+        p.instruction { font-size: 18px; color: #636e72; margin-bottom: 30px; text-align: center; }
+        
+        .game-board {
+            display: flex; justify-content: center; gap: 40px; width: 100%; max-width: 600px;
+        }
+        .column {
+            display: flex; flex-direction: column; gap: 15px; width: 45%;
+        }
+        .word-btn {
+            background-color: #fff; border: 3px solid #74b9ff; border-radius: 15px;
+            padding: 15px; font-size: 20px; font-weight: bold; color: #0984e3;
+            cursor: pointer; text-align: center; transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); user-select: none;
+        }
+        .word-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(116, 185, 255, 0.3); }
+        
+        /* State Warna */
+        .selected-left { background-color: #ffeaa7; border-color: #fdcb6e; color: #d35400; }
+        .selected-right { background-color: #ffeaa7; border-color: #fdcb6e; color: #d35400; }
+        .correct { background-color: #55efc4 !important; border-color: #00b894 !important; color: #2d3436 !important; transform: scale(1.05); cursor: default; }
+        .wrong-shake { animation: shake 0.4s; background-color: #fab1a0; border-color: #e17055; color: white; }
 
-    <div id="score-board">Skor: <span id="score">0</span> | Nyawa: <span id="hp">3</span></div>
-    
-    <div id="game-container">
-        <div id="hud">
-            <p id="question">SEDIA...</p>
-            <p id="status"></p>
-        </div>
-        <div id="car"></div>
-    </div>
-
-    <script>
-        const car = document.getElementById('car');
-        const questionEl = document.getElementById('question');
-        const statusEl = document.getElementById('status');
-        const container = document.getElementById('game-container');
-        const scoreEl = document.getElementById('score');
-        const hpEl = document.getElementById('hp');
-
-        let lane = 1; // 0: Kiri, 1: Tengah, 2: Kanan
-        const lanePositions = [46, 180, 313];
-        let score = 0;
-        let hp = 3;
-        let gameActive = true;
-        let currentGates = [];
-        let correctAnswer = "";
-
-        const wordData = [
-            { base: "SAUDARA", correct: "MARA", wrong: ["MIRI", "MARI"] },
-            { base: "ANAK", correct: "PINAK", wrong: ["PANAK", "PUNAK"] },
-            { base: "LINTANG", correct: "PUKANG", wrong: ["PUSING", "PATAH"] },
-            { base: "ULANG", correct: "ALIK", wrong: ["ALAM", "ALUR"] },
-            { base: "MUNDUR", correct: "MANDIR", wrong: ["MUNDAR", "MANDOR"] },
-            { base: "REMPAH", correct: "RATUS", wrong: ["RATAS", "RUTUS"] }
-        ];
-
-        document.addEventListener('keydown', (e) => {
-            if(!gameActive) return;
-            if (e.key === 'ArrowLeft' && lane > 0) lane--;
-            if (e.key === 'ArrowRight' && lane < 2) lane++;
-            car.style.left = lanePositions[lane] + 'px';
-        });
-
-        function spawnGate() {
-            if(!gameActive) return;
-            
-            const q = wordData[Math.floor(Math.random() * wordData.length)];
-            questionEl.innerText = q.base + " - [ ? ]";
-            correctAnswer = q.correct;
-
-            let answers = [q.correct, q.wrong[0], q.wrong[1]];
-            answers.sort(() => Math.random() - 0.5); // Shuffle
-
-            currentGates.forEach(g => g.remove());
-            currentGates = [];
-
-            answers.forEach((ans, index) => {
-                let gate = document.createElement('div');
-                gate.className = 'gate';
-                gate.style.left = (index * 133) + 'px';
-                gate.innerText = ans;
-                gate.dataset.isCorrect = (ans === q.correct);
-                container.appendChild(gate);
-                currentGates.push(gate);
-            });
-
-            moveGates();
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
         }
 
-        function moveGates() {
-            if(!gameActive) return;
-            let pos = -50;
-            let speed = 4 + (score * 0.5); // Kelajuan bertambah mengikut skor
-            
-            function frame() {
-                if(!gameActive) return;
-                pos += speed;
-                currentGates.forEach(gate => gate.style.top = pos + 'px');
-
-                // Collision Detection
-                if (pos > 510 && pos < 580) {
-                    let hitGate = currentGates[lane];
-                    if(hitGate) {
-                        if(hitGate.dataset.isCorrect === "true") {
-                            statusEl.innerText = "TEPAT! +10";
-                            statusEl.style.color = "#4cd137";
-                            score += 10;
-                            scoreEl.innerText = score;
-                            if(score >= 70) gameOver(true);
-                        } else {
-                            statusEl.innerText = "SALAH! Nyawa -1";
-                            statusEl.style.color = "#e84118";
-                            hp -= 1;
-                            hpEl.innerText = hp;
-                            car.style.backgroundColor = "red";
-                            setTimeout(() => car.style.backgroundColor = "#00a8ff", 500);
-                            if(hp <= 0) gameOver(false);
-                        }
-                        currentGates.forEach(g => g.remove());
-                        currentGates = [];
-                        setTimeout(spawnGate, 1000);
-                        return;
-                    }
-                }
-                
-                if (pos < 600) {
-                    requestAnimationFrame(frame);
-                } else {
-                    currentGates.forEach(g => g.remove());
-                    currentGates = [];
-                    spawnGate();
-                }
-            }
-            requestAnimationFrame(frame);
+        #feedback-area {
+            margin-top: 40px; min-height: 80px; text-align: center;
         }
-
-        function gameOver(win) {
-            gameActive = false;
-            questionEl.innerText = win ? "MISI SELESAI!" : "KERETA ROSAK!";
-            statusEl.innerText = win ? "Tahniah! Anda menguasai Kata Ganda!" : "Cuba lagi!";
-            statusEl.style.color = win ? "#4cd137" : "#e84118";
-        }
-
-        setTimeout(spawnGate, 2000);
-    </script>
-</body>
-</html>
+        .emoji { font-size: 60px; margin: 0; animation: bounce 1s infinite alternate; display: none; }
+        .feedback-text { font-size: 22px; font-weight: bold; color: #00b894; margin-top: 1
